@@ -22,7 +22,7 @@ fi
 set -e
 
 dopts=$(echo $DOMAINS | awk '{split($0,parts,";"); for (p in parts) printf(" -d %s", parts[p])}')
-primaryDomain=$(echo $DOMAINS | awk '{split($0,parts,";"); print parts[1]}')
+primaryDomain=$(echo $DOMAINS | awk '{split($0,parts,";"); parts[0]}')
 
 bopts=$(echo $BACKENDS | awk '{split($0,parts,";"); for (p in parts) printf(" -b %s", parts[p])}')
 
