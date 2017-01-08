@@ -5,35 +5,27 @@ if [ x$EMAIL = x ]; then
   exit 1
 fi
 
-if [ x$DOMAINS = x ]; then
-  echo "-e DOMAINS=d1;d2;... is required"
-  exit 1
-fi
-
-if [ x$BACKENDS = x ]; then
-  echo "-e BACKENDS=host:port;h:p;... is required"
-  exit 1
-fi
-
 if [ x$STAGING = xtrue ]; then
   staging="--staging"
 fi
 
+generator_args="--in "$GENERATOR_CONFIG""
+if [ x$DOMAINS != x ]; then
+  generator_args="$generator_args --domains $DOMAINS"
+fi
+
 set -e
 
-dopts=$(echo $DOMAINS | awk '{split($0,parts,";"); for (p in parts) printf(" -d %s", parts[p])}')
-primaryDomain=$(echo $DOMAINS | awk '{split($0,parts,";"); parts[0]}')
-
-bopts=$(echo $BACKENDS | awk '{split($0,parts,";"); for (p in parts) printf(" -b %s", parts[p])}')
+dopts=$(haproxy-gen_alpine certbot-args $generator_args)
+primary_domain=$(haproxy-gen_alpine primary-domain $generator_args)
 
 set -x
 certbot certonly --standalone $dopts \
   --non-interactive --agree-tos $staging --email $EMAIL
 
-mkdir -p /etc/certs
-cat /etc/letsencrypt/live/$primaryDomain/privkey.pem /etc/letsencrypt/live/$primaryDomain/fullchain.pem \
-    > /etc/certs/haproxy.pem
+mkdir -p /certs
+cat /etc/letsencrypt/live/$primary_domain/privkey.pem /etc/letsencrypt/live/$primary_domain/fullchain.pem \
+    > /certs/haproxy.pem
 
-haproxy-gen_alpine generate --template /etc/haproxy-templates $dopts $bopts > /usr/local/etc/haproxy/haproxy.cfg
-
+haproxy-gen_alpine generate $generator_args --out "$HAPROXY_CFG"
 /docker-entrypoint.sh $@
