@@ -19,4 +19,4 @@ COPY haproxy-gen-cfg.yml /config/
 
 VOLUME ["/config", "/certs"]
 ENTRYPOINT ["/opt/haproxy-letsencrypt-start.sh"]
-CMD ["haproxy", "-f", "${HAPROXY_CFG}"]
+CMD ["haproxy", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
