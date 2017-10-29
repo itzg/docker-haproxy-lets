@@ -4,7 +4,7 @@ MAINTAINER itzg
 
 RUN apk -U add certbot openssl dumb-init
 
-ENV GENERATOR_VER=0.1.2 \
+ENV GENERATOR_VER=0.2.0 \
     GENERATOR_DIR=/opt/haproxy-gen \
     GENERATOR_ETC=/etc/haproxy-gen \
     GEN_CFG=/config/gen-cfg.yml \
@@ -24,7 +24,7 @@ RUN tar -C /opt -xvf /tmp/plugin.tgz && \
     mkdir -p /etc/haproxy && \
     ln -s /opt/haproxy-acme-validation-plugin-${HAPROXY_PLUGIN_VER}/acme-http01-webroot.lua /etc/haproxy
 
-COPY *gen-cfg.yml /config/
+COPY gen-cfg.yml /config/
 COPY haproxy-letsencrypt-start.sh /opt/
 
 VOLUME ["/config", "/certs"]

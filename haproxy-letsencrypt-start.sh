@@ -31,7 +31,7 @@ else
   echo $DOMAINS > /config/domains
 fi
 
-generatorOpts="--domains=$DOMAINS"
+generatorOpts="--domains=$DOMAINS --in $GEN_CFG"
 
 set -e
 
@@ -60,7 +60,7 @@ manageCerts() {
   certbot certonly $certbotOpts --webroot --webroot-path $WEBROOT --expand --allow-subset-of-names $domainOpts
   fixCertFile
 
-  ${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --in /config/gen-cfg.yml --out $haproxyCfg
+  ${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --out $haproxyCfg
   reloadHaproxy
 
   while true; do 
@@ -83,7 +83,7 @@ renew() {
   fi
 }
 
-${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --in /config/initial-gen-cfg.yml --out $haproxyCfg
+${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --disable-certs --out $haproxyCfg
 
 manageCerts &
 
