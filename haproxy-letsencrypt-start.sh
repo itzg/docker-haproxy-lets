@@ -37,11 +37,12 @@ set -e
 
 domainOpts=$(${GENERATOR_DIR}/haproxy-gen certbot-args $generatorOpts)
 primaryDomain=$(${GENERATOR_DIR}/haproxy-gen primary-domain $generatorOpts)
+pemBundle=/certs/$primaryDomain.pem
 
 
 fixCertFile() {
   src=/certs/live/$primaryDomain
-  cat ${src}/fullchain.pem ${src}/privkey.pem > /certs/$primaryDomain.pem
+  cat ${src}/fullchain.pem ${src}/privkey.pem > $pemBundle
 }
 
 reloadHaproxy() {
@@ -83,7 +84,11 @@ renew() {
   fi
 }
 
-${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --disable-certs --out $haproxyCfg
+if [ ! -f $pemBundle ]; then
+  disableCerts="--disable-certs"
+fi
+
+${GENERATOR_DIR}/haproxy-gen generate $generatorOpts $disableCerts --out $haproxyCfg
 
 manageCerts &
 
