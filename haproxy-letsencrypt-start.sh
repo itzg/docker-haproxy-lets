@@ -1,51 +1,91 @@
 #!/bin/sh
 
-# one week
-renewInterval=604800
-HAPROXY_CFG=/usr/local/etc/haproxy/haproxy.cfg
+# try renew every 12 hours
+#renewInterval=43200
+renewInterval=60
+haproxyCfg=/config/haproxy.cfg
+certbotOpts="--non-interactive --config-dir /certs --agree-tos"
+haproxyPidFile=/var/run/haproxy.pid
+
+if [ x$DEBUG = xtrue ]; then
+  set -x
+fi
 
 if [ x$EMAIL = x ]; then
   echo "-e EMAIL=... is required"
   exit 1
 fi
+certbotOpts="$certbotOpts --email $EMAIL"
 
 if [ x$STAGING = xtrue ]; then
-  staging="--staging"
+  certbotOpts="$certbotOpts --staging"
 fi
 
-generator_args="--in "$GENERATOR_CONFIG""
-if [ x$DOMAINS != x ]; then
-  generator_args="$generator_args --domains $DOMAINS"
+if [ -f /config/domains ]; then
+  DOMAINS=$(cat /config/domains)
+else
+  if [ x$DOMAINS = x ]; then
+    echo "-e DOMAINS=... is required"
+    exit 1
+  fi
+  echo $DOMAINS > /config/domains
 fi
+
+generatorOpts="--domains=$DOMAINS"
 
 set -e
 
-dopts=$(${GENERATOR_DIR}/haproxy-gen certbot-args $generator_args)
-primary_domain=$(${GENERATOR_DIR}/haproxy-gen primary-domain $generator_args)
-mkdir -p /var/lib/haproxy
+domainOpts=$(${GENERATOR_DIR}/haproxy-gen certbot-args $generatorOpts)
+primaryDomain=$(${GENERATOR_DIR}/haproxy-gen primary-domain $generatorOpts)
 
-${GENERATOR_DIR}/haproxy-gen generate $generator_args --out "$HAPROXY_CFG"
 
 fixCertFile() {
-    src=/etc/letsencrypt/live/$primary_domain
-    cp ${src}/fullchain.pem /certs/$primary_domain.pem
-    cp ${src}/privkey.pem /certs/$primary_domain.pem.rsa
+  src=/certs/live/$primaryDomain
+  cat ${src}/fullchain.pem ${src}/privkey.pem > /certs/$primaryDomain.pem
+}
+
+reloadHaproxy() {
+  pid=$(ps -o pid,comm | awk '$2 == "haproxy-systemd" {print $1}')
+  echo "reloading haproxy wrapper at $pid"
+  kill -HUP $pid
+}
+
+manageCerts() {
+  while ! netstat -nl|grep :80 >& /dev/null; do
+    sleep 5
+  done
+
+  set -e
+  echo "INIT: Using certbot to initialize certs"
+  certbot certonly $certbotOpts --webroot --webroot-path $WEBROOT --expand --allow-subset-of-names $domainOpts
+  fixCertFile
+
+  ${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --in /config/gen-cfg.yml --out $haproxyCfg
+  reloadHaproxy
+
+  while true; do 
+    renew 
+  done
 }
 
 renew() {
-    sleep $renewInterval
+  echo "RENEW: waiting $renewInterval seconds..."
+  sleep $renewInterval
 
-    # TODO
-    # call certbot webroot
-    # signal haproxy to reload
-
+  echo "RENEW: calling certbot"
+  certbot renew $certbotOpts | tee /tmp/renew.log
+  if grep "No renewals were attempted" /tmp/renew.log; then
+    echo "RENEW: skipping"
+  else
+    echo "RENEW: reloading"
+    fixCertFile
+    reloadHaproxy
+  fi
 }
 
-certbot certonly --standalone $dopts \
-  --non-interactive --agree-tos $staging --email $EMAIL
+${GENERATOR_DIR}/haproxy-gen generate $generatorOpts --in /config/initial-gen-cfg.yml --out $haproxyCfg
 
-fixCertFile
+manageCerts &
 
-renew &
-
-haproxy -f ${HAPROXY_CFG}
+echo "Starting haproxy"
+/usr/local/sbin/haproxy-systemd-wrapper -p /run/haproxy.pid -d -f ${haproxyCfg}
