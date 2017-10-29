@@ -1,3 +1,12 @@
 ---
 templatepath: /etc/haproxy-gen/templates
 certs: /certs
+
+extra:
+  global: |
+    lua-load /etc/haproxy/acme-http01-webroot.lua
+    chroot /var/lib/haproxy
+  PreFrontend: |
+    acl url_acme_http01 path_beg /.well-known/acme-challenge/
+  HttpHttpsRedirectCondition: |
+    !{ or ssl_fc url_acme_http01 }
