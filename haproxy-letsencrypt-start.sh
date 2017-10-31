@@ -1,8 +1,7 @@
 #!/bin/sh
 
 # try renew every 12 hours
-#renewInterval=43200
-renewInterval=60
+renewInterval=43200
 haproxyCfg=/config/haproxy.cfg
 certbotOpts="--non-interactive --config-dir /certs --agree-tos"
 haproxyPidFile=/var/run/haproxy.pid
