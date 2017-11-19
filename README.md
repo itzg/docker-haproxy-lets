@@ -15,6 +15,12 @@ Adds Let's Encrypt support to the official haproxy image
   `PORT` is the listening port of that service.
 * `STAGING` : set to `true` in order to use staging LetsEncrypt certificate requests
 
+#### NOTE for DOMAINS
+
+The `DOMAINS` values is persisted and read from `/config/domains` so that the domain mapping can be changed
+without re-creating the entire container. When changing domain mappings, be sure to edit or remove that
+file.
+
 ### Port Mappings
 
 * 80
