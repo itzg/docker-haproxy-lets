@@ -9,5 +9,6 @@ extra:
   prefrontend: |
     acl url_acme_http01 path_beg /.well-known/acme-challenge/
     http-request use-service lua.acme-http01 if METH_GET url_acme_http01
+    http-request set-header X-Forwarded-Proto https if { ssl_fc }
   httphttpsredirectcondition: |
     !{ or ssl_fc url_acme_http01 }
