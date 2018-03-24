@@ -92,4 +92,4 @@ ${GENERATOR_DIR}/haproxy-gen generate $generatorOpts $disableCerts --out $haprox
 manageCerts &
 
 echo "Starting haproxy"
-/usr/local/sbin/haproxy-systemd-wrapper -p /run/haproxy.pid -d -f ${haproxyCfg}
+haproxy -f ${haproxyCfg}
